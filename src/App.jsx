@@ -26,6 +26,7 @@ import useApplySettings from "@/hooks/useApplySettings";
 
 import BottomNav from "@/components/BottomNav";
 import Home from "@/pages/Home";
+import HomePage from "@/pages/landing/HomePage";
 import ProductDetail from "@/pages/ProductDetail";
 import Messages from "@/pages/Messages";
 import ChatThread from "@/pages/ChatThread";
@@ -118,7 +119,7 @@ function AppLayout() {
     const pharmacyId = profile.uid || user.uid;
     const q = query(
       collection(db, "orders"),
-      where("pharmacyId", "==", pharmacyId)
+      where("pharmacyId", "==", pharmacyId),
     );
 
     const unsub = onSnapshot(q, (snap) => {
@@ -127,7 +128,7 @@ function AppLayout() {
         const status = order.status?.toLowerCase() || "pending";
         // Exclude processing, shipped, fulfilled, cancelled - count pending, etc.
         return !["processing", "shipped", "fulfilled", "cancelled"].includes(
-          status
+          status,
         );
       });
       setOrdersCount(filteredOrders.length);
@@ -158,7 +159,7 @@ function AppLayout() {
           console.error("[AppLayout] error computing unread from threads", e);
         }
       },
-      (err) => console.error("[AppLayout] listenUserThreads error", err)
+      (err) => console.error("[AppLayout] listenUserThreads error", err),
     );
 
     return () => unsub && unsub();
@@ -282,7 +283,7 @@ function ProductDetailRoute() {
         setProduct(prodData ? { id, ...prodData } : null);
         if (prodData?.pharmacyId) {
           const pharmSnap = await getDoc(
-            firestoreDoc(db, "pharmacies", prodData.pharmacyId)
+            firestoreDoc(db, "pharmacies", prodData.pharmacyId),
           );
           setPharmacy(pharmSnap.data());
         }
@@ -368,7 +369,7 @@ function RoleBasedRootRoute() {
   }
 
   if (!user) {
-    return <Navigate to="/auth/onboarding" replace />;
+    return <Navigate to="/home" replace />;
   }
 
   if (profile?.role === "pharmacy") {
@@ -439,6 +440,9 @@ function Shell() {
           }
         />
       </Route>
+
+      {/* Home Page */}
+      <Route path="/home" element={<HomePage />} />
 
       {/* Superuser route - only for superuser role, uses BareLayout (no BottomNav) */}
       <Route element={<BareLayout />}>
