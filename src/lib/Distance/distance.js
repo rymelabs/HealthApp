@@ -35,7 +35,7 @@ const getRouteDistance = async ({ pharmacyLocation, customerLocation }) => {
   const payload = { origin, destination };
   const headers = {
     "Content-Type": "application/json",
-    "X-Goog-Api-Key": "AIzaSyBrRCC7uRo9vv-VtbIq7lWP_1dEg89o77k",
+    "X-Goog-Api-Key": process.env.GOOGLE_API_KEY,
     "X-Goog-FieldMask":
       "routes.duration,routes.distanceMeters,routes.polyline.encodedPolyline",
   };
@@ -45,7 +45,7 @@ const getRouteDistance = async ({ pharmacyLocation, customerLocation }) => {
     payload,
     {
       headers: headers,
-    }
+    },
   );
 
   return response.data.routes[0];
