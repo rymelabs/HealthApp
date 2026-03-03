@@ -1,19 +1,18 @@
 import { setGlobalOptions } from "firebase-functions";
 import { onRequest, onCall, HttpsError } from "firebase-functions/https";
 import { defineSecret } from "firebase-functions/params";
-import admin from "firebase-admin";
+import admin, { db } from "./firebase.js";
 import axios from "axios";
 import corsLib from "cors";
 import crypto from "crypto";
+import logSearch from "./searchQuery/log-search.js";
 // import { logger } from "firebase-functions";
 
 setGlobalOptions({ maxInstances: 10 });
-
-admin.initializeApp();
 const cors = corsLib({ origin: true });
-const db = admin.firestore();
 
-const PAYSTACK_SECRET = process.env.PAYSTACK_SECRET || defineSecret("PAYSTACK_SECRET");
+const PAYSTACK_SECRET =
+  process.env.PAYSTACK_SECRET || defineSecret("PAYSTACK_SECRET");
 const PAYSTACK_BASE = "https://api.paystack.co";
 
 function generateRandomString(length) {
@@ -58,7 +57,7 @@ async function ensureRecipient(pharmId) {
     payload,
     {
       headers: { Authorization: `Bearer ${PAYSTACK_SECRET.value()}` },
-    }
+    },
   );
 
   const recipientCode = data.data.recipient_code;
@@ -98,14 +97,26 @@ const initOrder = onCall(async (request) => {
     // Ensure total is a number
     const numericTotal = Number(total);
     if (isNaN(numericTotal) || numericTotal <= 0) {
-      throw new HttpsError("invalid-argument", `Invalid total amount: ${total}`);
+      throw new HttpsError(
+        "invalid-argument",
+        `Invalid total amount: ${total}`,
+      );
     }
 
     const amount = Math.round(numericTotal * 100);
-    console.log("Calculated amount:", amount, "from total * 100:", numericTotal * 100);
-    
-    if (amount < 10000) { // Paystack minimum is 100 naira = 10000 kobo
-      throw new HttpsError("invalid-argument", `Amount too small: ${amount} kobo. Minimum is 10000 kobo (₦100)`);
+    console.log(
+      "Calculated amount:",
+      amount,
+      "from total * 100:",
+      numericTotal * 100,
+    );
+
+    if (amount < 10000) {
+      // Paystack minimum is 100 naira = 10000 kobo
+      throw new HttpsError(
+        "invalid-argument",
+        `Amount too small: ${amount} kobo. Minimum is 10000 kobo (₦100)`,
+      );
     }
 
     const payload = {
@@ -123,7 +134,7 @@ const initOrder = onCall(async (request) => {
         headers: {
           Authorization: `Bearer ${process.env.PAYSTACK_SECRET || PAYSTACK_SECRET.value()}`,
         },
-      }
+      },
     );
 
     const authUrl = data.data.authorization_url;
@@ -179,7 +190,7 @@ const paystackWebhook = onRequest(async (req, res) => {
         } else {
           console.warn(
             "Transfer reference not tracked locally: ",
-            transferRefence
+            transferRefence,
           );
         }
       }
@@ -210,7 +221,7 @@ const confirmDelivery = onCall(async (request) => {
     if (order.status !== "paid" && order.status !== "partly_released") {
       throw new HttpsError(
         "failed-precondition",
-        "Order not ready to be released"
+        "Order not ready to be released",
       );
     }
 
@@ -229,7 +240,7 @@ const confirmDelivery = onCall(async (request) => {
 
     const amount = itemsForPharm.reduce(
       (s, it) => s + it.price * it.quantity,
-      0
+      0,
     );
 
     const idempotencyKey = crypto.randomBytes(12).toString("hex");
@@ -348,4 +359,5 @@ export {
   confirmDelivery,
   makePayment,
   verifyPayment,
+  logSearch,
 };
