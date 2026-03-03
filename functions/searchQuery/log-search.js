@@ -3,7 +3,7 @@ import { onCall, HttpsError } from "firebase-functions/v2/https";
 
 import { db } from "../firebase.js";
 
-const logSearch = onCall(async (request) => {
+const logSearch = onCall({ cors: true }, async (request) => {
   if (!request.auth) throw new HttpsError("unauthenticated", "Login Required");
 
   try {

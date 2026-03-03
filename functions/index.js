@@ -8,7 +8,7 @@ import crypto from "crypto";
 import logSearch from "./searchQuery/log-search.js";
 // import { logger } from "firebase-functions";
 
-setGlobalOptions({ maxInstances: 10 });
+setGlobalOptions({ maxInstances: 10, invoker: "public" });
 const cors = corsLib({ origin: true });
 
 const PAYSTACK_SECRET =

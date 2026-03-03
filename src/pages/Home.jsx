@@ -593,7 +593,6 @@ export default function Home() {
               value={q}
               onChange={(e) => {
                 setQ(e.target.value);
-                console.log(e.target.value);
                 setShowSearchSuggestions(true);
                 setSelectedSuggestionIndex(-1);
               }}
