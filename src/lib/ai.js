@@ -1,22 +1,31 @@
-import OpenAI from 'openai';
-import { GoogleGenerativeAI } from '@google/generative-ai';
-import { collection, query, where, getDocs, limit, orderBy, doc, getDoc } from 'firebase/firestore';
-import { db } from './firebase';
+import OpenAI from "openai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
+import {
+  collection,
+  query,
+  where,
+  getDocs,
+  limit,
+  orderBy,
+  doc,
+  getDoc,
+} from "firebase/firestore";
+import { db } from "./firebase";
 
 // AI Provider configuration
-const AI_PROVIDER = import.meta.env.VITE_AI_PROVIDER || 'gemini'; // 'openai', 'gemini', or 'mistral'
+const AI_PROVIDER = import.meta.env.VITE_AI_PROVIDER || "gemini"; // 'openai', 'gemini', or 'mistral'
 
 // Helper functions to fetch app data for AI context
 export async function getPharmaciesContext(limitCount = 20) {
   try {
     const q = query(
-      collection(db, 'users'),
-      where('role', '==', 'pharmacy'),
-      limit(limitCount)
+      collection(db, "users"),
+      where("role", "==", "pharmacy"),
+      limit(limitCount),
     );
     const snapshot = await getDocs(q);
     const pharmacies = [];
-    snapshot.forEach(doc => {
+    snapshot.forEach((doc) => {
       const data = doc.data();
       const potentialLat =
         data?.lat ??
@@ -41,13 +50,13 @@ export async function getPharmaciesContext(limitCount = 20) {
         data?.coordinates?.lng ??
         data?.coordinates?.longitude;
       const lat =
-        typeof potentialLat === 'number'
+        typeof potentialLat === "number"
           ? potentialLat
           : potentialLat !== undefined && potentialLat !== null
             ? Number(potentialLat)
             : undefined;
       const lon =
-        typeof potentialLon === 'number'
+        typeof potentialLon === "number"
           ? potentialLon
           : potentialLon !== undefined && potentialLon !== null
             ? Number(potentialLon)
@@ -55,7 +64,10 @@ export async function getPharmaciesContext(limitCount = 20) {
       const coordinates =
         data?.coordinates ||
         data?.coords ||
-        (lat !== undefined && !Number.isNaN(lat) && lon !== undefined && !Number.isNaN(lon)
+        (lat !== undefined &&
+        !Number.isNaN(lat) &&
+        lon !== undefined &&
+        !Number.isNaN(lon)
           ? { latitude: lat, longitude: lon }
           : undefined);
       pharmacies.push({
@@ -70,12 +82,12 @@ export async function getPharmaciesContext(limitCount = 20) {
         lon: lon !== undefined && !Number.isNaN(lon) ? lon : undefined,
         coordinates,
         services: data.services,
-        url: `/vendor/${doc.id}` // Add pharmacy profile URL for direct linking
+        url: `/vendor/${doc.id}`, // Add pharmacy profile URL for direct linking
       });
     });
     return pharmacies;
   } catch (error) {
-    console.error('Error fetching pharmacies:', error);
+    console.error("Error fetching pharmacies:", error);
     return [];
   }
 }
@@ -83,13 +95,13 @@ export async function getPharmaciesContext(limitCount = 20) {
 export async function getProductsContext(limitCount = 50) {
   try {
     const q = query(
-      collection(db, 'products'),
-      orderBy('createdAt', 'desc'),
-      limit(limitCount)
+      collection(db, "products"),
+      orderBy("createdAt", "desc"),
+      limit(limitCount),
     );
     const snapshot = await getDocs(q);
     const products = [];
-    snapshot.forEach(doc => {
+    snapshot.forEach((doc) => {
       const data = doc.data();
       products.push({
         name: data.name,
@@ -99,12 +111,12 @@ export async function getProductsContext(limitCount = 50) {
         pharmacyName: data.pharmacyName,
         stock: data.stock,
         tags: data.tags || [],
-        url: `/product/${doc.id}` // Add product URL for direct linking
+        url: `/product/${doc.id}`, // Add product URL for direct linking
       });
     });
     return products;
   } catch (error) {
-    console.error('Error fetching products:', error);
+    console.error("Error fetching products:", error);
     return [];
   }
 }
@@ -114,13 +126,13 @@ async function fetchProductsMap(productIds = []) {
     new Set(
       (productIds || [])
         .filter(Boolean)
-        .map((id) => (typeof id === 'string' ? id.trim() : id))
-    )
+        .map((id) => (typeof id === "string" ? id.trim() : id)),
+    ),
   );
   if (uniqueIds.length === 0) return {};
 
   const snapshots = await Promise.all(
-    uniqueIds.map((id) => getDoc(doc(db, 'products', id)))
+    uniqueIds.map((id) => getDoc(doc(db, "products", id))),
   );
 
   const map = {};
@@ -139,17 +151,17 @@ const toDateObject = (value) => {
     return Number.isNaN(value.getTime()) ? null : value;
   }
 
-  if (typeof value.toDate === 'function') {
+  if (typeof value.toDate === "function") {
     const date = value.toDate();
     return date instanceof Date && !Number.isNaN(date.getTime()) ? date : null;
   }
 
-  if (typeof value === 'string' || typeof value === 'number') {
+  if (typeof value === "string" || typeof value === "number") {
     const date = new Date(value);
     return Number.isNaN(date.getTime()) ? null : date;
   }
 
-  if (typeof value.toISOString === 'function') {
+  if (typeof value.toISOString === "function") {
     const iso = value.toISOString();
     const date = new Date(iso);
     return Number.isNaN(date.getTime()) ? null : date;
@@ -167,7 +179,7 @@ export async function getUserCartContext(userId, { limitItems = 25 } = {}) {
   if (!userId) return [];
 
   try {
-    const cartSnapshot = await getDocs(collection(db, 'users', userId, 'cart'));
+    const cartSnapshot = await getDocs(collection(db, "users", userId, "cart"));
     let items = cartSnapshot.docs.map((docSnap) => ({
       id: docSnap.id,
       ...docSnap.data(),
@@ -175,13 +187,11 @@ export async function getUserCartContext(userId, { limitItems = 25 } = {}) {
 
     if (items.length === 0) return [];
 
-    if (typeof limitItems === 'number' && limitItems > 0) {
+    if (typeof limitItems === "number" && limitItems > 0) {
       items = items.slice(0, limitItems);
     }
 
-    const productIds = items
-      .map((item) => item.productId)
-      .filter(Boolean);
+    const productIds = items.map((item) => item.productId).filter(Boolean);
 
     const productMap = await fetchProductsMap(productIds);
 
@@ -193,15 +203,15 @@ export async function getUserCartContext(userId, { limitItems = 25 } = {}) {
         quantity: item.qty || item.quantity || 1,
         productName: product.name,
         price: product.price,
-        currency: product.currency || 'NGN',
+        currency: product.currency || "NGN",
         pharmacyName: product.pharmacyName,
         stock: product.stock,
         productUrl: product.id ? `/product/${product.id}` : null,
-        cartUrl: '/cart',
+        cartUrl: "/cart",
       };
     });
   } catch (error) {
-    console.error('Error fetching user cart for AI context:', error);
+    console.error("Error fetching user cart for AI context:", error);
     return [];
   }
 }
@@ -211,10 +221,10 @@ export async function getUserOrdersContext(userId, { limitCount = 10 } = {}) {
 
   try {
     const q = query(
-      collection(db, 'orders'),
-      where('customerId', '==', userId),
-      orderBy('createdAt', 'desc'),
-      limit(limitCount)
+      collection(db, "orders"),
+      where("customerId", "==", userId),
+      orderBy("createdAt", "desc"),
+      limit(limitCount),
     );
 
     const snapshot = await getDocs(q);
@@ -252,7 +262,7 @@ export async function getUserOrdersContext(userId, { limitCount = 10 } = {}) {
 
       return {
         id: order.id,
-        status: order.status || 'pending',
+        status: order.status || "pending",
         total: order.total,
         createdAt,
         pharmacyId: order.pharmacyId || null,
@@ -261,18 +271,21 @@ export async function getUserOrdersContext(userId, { limitCount = 10 } = {}) {
       };
     });
   } catch (error) {
-    console.error('Error fetching user orders for AI context:', error);
+    console.error("Error fetching user orders for AI context:", error);
     return [];
   }
 }
 
-export async function getUserPrescriptionsContext(userId, { limitCount = 15 } = {}) {
+export async function getUserPrescriptionsContext(
+  userId,
+  { limitCount = 15 } = {},
+) {
   if (!userId) return [];
 
   try {
     const q = query(
-      collection(db, 'prescriptions'),
-      where('customerId', '==', userId)
+      collection(db, "prescriptions"),
+      where("customerId", "==", userId),
     );
     const snapshot = await getDocs(q);
 
@@ -285,27 +298,26 @@ export async function getUserPrescriptionsContext(userId, { limitCount = 15 } = 
 
     prescriptions.sort((a, b) => {
       const aDate =
-        toDateObject(a.startDate) ||
-        toDateObject(a.createdAt) ||
-        new Date(0);
+        toDateObject(a.startDate) || toDateObject(a.createdAt) || new Date(0);
       const bDate =
-        toDateObject(b.startDate) ||
-        toDateObject(b.createdAt) ||
-        new Date(0);
+        toDateObject(b.startDate) || toDateObject(b.createdAt) || new Date(0);
       return (bDate?.getTime?.() || 0) - (aDate?.getTime?.() || 0);
     });
 
-    const limited = typeof limitCount === 'number' && limitCount > 0
-      ? prescriptions.slice(0, limitCount)
-      : prescriptions;
+    const limited =
+      typeof limitCount === "number" && limitCount > 0
+        ? prescriptions.slice(0, limitCount)
+        : prescriptions;
 
     return limited.map((prescription) => {
-      const startDate = toISODateString(prescription.startDate) || toISODateString(prescription.createdAt);
+      const startDate =
+        toISODateString(prescription.startDate) ||
+        toISODateString(prescription.createdAt);
 
       return {
         id: prescription.id,
         pharmacyId: prescription.pharmacyId || null,
-        status: prescription.status || 'active',
+        status: prescription.status || "active",
         startDate,
         duration: prescription.duration,
         notes: prescription.notes,
@@ -315,12 +327,12 @@ export async function getUserPrescriptionsContext(userId, { limitCount = 15 } = 
           frequency: drug.frequency,
           instructions: drug.instructions,
         })),
-        prescriptionUrl: '/profile',
+        prescriptionUrl: "/profile",
         relatedChatThreadId: prescription.chatThreadId || null,
       };
     });
   } catch (error) {
-    console.error('Error fetching user prescriptions for AI context:', error);
+    console.error("Error fetching user prescriptions for AI context:", error);
     return [];
   }
 }
@@ -330,49 +342,56 @@ export async function searchPharmacies(searchTerm, limitCount = 10) {
     // Get all pharmacies first (since Firestore doesn't support text search easily)
     const pharmacies = await getPharmaciesContext(100);
     const lowerSearch = searchTerm.toLowerCase();
-    
+
     // First, try exact matches
-    const exactMatches = pharmacies.filter(pharmacy => 
-      pharmacy.name?.toLowerCase().includes(lowerSearch) ||
-      pharmacy.location?.toLowerCase().includes(lowerSearch) ||
-      pharmacy.address?.toLowerCase().includes(lowerSearch)
+    const exactMatches = pharmacies.filter(
+      (pharmacy) =>
+        pharmacy.name?.toLowerCase().includes(lowerSearch) ||
+        pharmacy.location?.toLowerCase().includes(lowerSearch) ||
+        pharmacy.address?.toLowerCase().includes(lowerSearch),
     );
-    
+
     if (exactMatches.length > 0) {
       return exactMatches.slice(0, limitCount);
     }
-    
+
     // If no exact matches, find similar pharmacies using fuzzy matching
-    const similarMatches = pharmacies.filter(pharmacy => {
-      const name = pharmacy.name?.toLowerCase() || '';
-      const location = pharmacy.location?.toLowerCase() || '';
-      const address = pharmacy.address?.toLowerCase() || '';
-      
-      // Calculate similarity scores
-      const nameSimilarity = getSimilarityScore(lowerSearch, name);
-      const locationSimilarity = getSimilarityScore(lowerSearch, location);
-      const addressSimilarity = getSimilarityScore(lowerSearch, address);
-      
-      // Consider it a match if any similarity score is above threshold
-      return nameSimilarity > 0.3 || locationSimilarity > 0.3 || addressSimilarity > 0.3;
-    }).sort((a, b) => {
-      // Sort by best similarity score
-      const aScore = Math.max(
-        getSimilarityScore(lowerSearch, a.name?.toLowerCase() || ''),
-        getSimilarityScore(lowerSearch, a.location?.toLowerCase() || ''),
-        getSimilarityScore(lowerSearch, a.address?.toLowerCase() || '')
-      );
-      const bScore = Math.max(
-        getSimilarityScore(lowerSearch, b.name?.toLowerCase() || ''),
-        getSimilarityScore(lowerSearch, b.location?.toLowerCase() || ''),
-        getSimilarityScore(lowerSearch, b.address?.toLowerCase() || '')
-      );
-      return bScore - aScore;
-    });
-    
+    const similarMatches = pharmacies
+      .filter((pharmacy) => {
+        const name = pharmacy.name?.toLowerCase() || "";
+        const location = pharmacy.location?.toLowerCase() || "";
+        const address = pharmacy.address?.toLowerCase() || "";
+
+        // Calculate similarity scores
+        const nameSimilarity = getSimilarityScore(lowerSearch, name);
+        const locationSimilarity = getSimilarityScore(lowerSearch, location);
+        const addressSimilarity = getSimilarityScore(lowerSearch, address);
+
+        // Consider it a match if any similarity score is above threshold
+        return (
+          nameSimilarity > 0.3 ||
+          locationSimilarity > 0.3 ||
+          addressSimilarity > 0.3
+        );
+      })
+      .sort((a, b) => {
+        // Sort by best similarity score
+        const aScore = Math.max(
+          getSimilarityScore(lowerSearch, a.name?.toLowerCase() || ""),
+          getSimilarityScore(lowerSearch, a.location?.toLowerCase() || ""),
+          getSimilarityScore(lowerSearch, a.address?.toLowerCase() || ""),
+        );
+        const bScore = Math.max(
+          getSimilarityScore(lowerSearch, b.name?.toLowerCase() || ""),
+          getSimilarityScore(lowerSearch, b.location?.toLowerCase() || ""),
+          getSimilarityScore(lowerSearch, b.address?.toLowerCase() || ""),
+        );
+        return bScore - aScore;
+      });
+
     return similarMatches.slice(0, limitCount);
   } catch (error) {
-    console.error('Error searching pharmacies:', error);
+    console.error("Error searching pharmacies:", error);
     return [];
   }
 }
@@ -380,27 +399,32 @@ export async function searchPharmacies(searchTerm, limitCount = 10) {
 // Simple string similarity function (Levenshtein distance approximation)
 function getSimilarityScore(str1, str2) {
   if (!str1 || !str2) return 0;
-  
+
   // Simple substring matching with length consideration
   if (str2.includes(str1)) return 0.9;
   if (str1.includes(str2)) return 0.8;
-  
+
   // Check for common words
-  const words1 = str1.split(' ');
-  const words2 = str2.split(' ');
-  const commonWords = words1.filter(word => words2.some(w2 => w2.includes(word) || word.includes(w2)));
-  
+  const words1 = str1.split(" ");
+  const words2 = str2.split(" ");
+  const commonWords = words1.filter((word) =>
+    words2.some((w2) => w2.includes(word) || word.includes(w2)),
+  );
+
   if (commonWords.length > 0) {
-    return Math.min(0.7, commonWords.length / Math.max(words1.length, words2.length));
+    return Math.min(
+      0.7,
+      commonWords.length / Math.max(words1.length, words2.length),
+    );
   }
-  
+
   // Character-level similarity for short strings
   if (str1.length < 5 && str2.length < 5) {
     const longer = str1.length > str2.length ? str1 : str2;
     const shorter = str1.length > str2.length ? str2 : str1;
     if (longer.includes(shorter)) return 0.6;
   }
-  
+
   return 0;
 }
 
@@ -409,44 +433,57 @@ export async function searchProducts(searchTerm, limitCount = 20) {
     // Get all products first
     const products = await getProductsContext(200);
     const lowerSearch = searchTerm.toLowerCase();
-    
-    return products.filter(product => 
-      product.name?.toLowerCase().includes(lowerSearch) ||
-      product.description?.toLowerCase().includes(lowerSearch) ||
-      product.category?.toLowerCase().includes(lowerSearch) ||
-      (product.tags && product.tags.some(tag => tag.toLowerCase().includes(lowerSearch)))
-    ).slice(0, limitCount);
+
+    return products
+      .filter(
+        (product) =>
+          product.name?.toLowerCase().includes(lowerSearch) ||
+          product.description?.toLowerCase().includes(lowerSearch) ||
+          product.category?.toLowerCase().includes(lowerSearch) ||
+          (product.tags &&
+            product.tags.some((tag) =>
+              tag.toLowerCase().includes(lowerSearch),
+            )),
+      )
+      .slice(0, limitCount);
   } catch (error) {
-    console.error('Error searching products:', error);
+    console.error("Error searching products:", error);
     return [];
   }
 }
 
 // Initialize OpenAI client
 const getOpenAIClient = () => {
-  const apiKey = import.meta.env.VITE_OPENAI_API_KEY || import.meta.env.OPENAI_API_KEY;
+  const apiKey =
+    import.meta.env.VITE_OPENAI_API_KEY || import.meta.env.OPENAI_API_KEY;
   if (!apiKey) {
-    throw new Error('OpenAI API key not configured. Please add VITE_OPENAI_API_KEY to your .env file.');
+    throw new Error(
+      "OpenAI API key not configured. Please add VITE_OPENAI_API_KEY to your .env file.",
+    );
   }
   return new OpenAI({
     apiKey,
-    dangerouslyAllowBrowser: true // Note: In production, API calls should be made from backend
+    dangerouslyAllowBrowser: true, // Note: In production, API calls should be made from backend
   });
 };
 
 // Initialize Gemini AI client
 const getGeminiClient = () => {
-  const apiKey = import.meta.env.VITE_GOOGLE_GEMINI_API_KEY || import.meta.env.GOOGLE_GEMINI_API_KEY;
+  const apiKey =
+    import.meta.env.VITE_GOOGLE_GEMINI_API_KEY ||
+    import.meta.env.GOOGLE_GEMINI_API_KEY;
   if (!apiKey) {
-    throw new Error('Google Gemini API key not configured. Please add VITE_GOOGLE_GEMINI_API_KEY to your .env file. Get a free key at: https://makersuite.google.com/app/apikey');
+    throw new Error(
+      "Google Gemini API key not configured. Please add VITE_GOOGLE_GEMINI_API_KEY to your .env file. Get a free key at: https://makersuite.google.com/app/apikey",
+    );
   }
   const genAI = new GoogleGenerativeAI(apiKey);
   return genAI.getGenerativeModel({
-    model: 'gemini-pro',
+    model: "gemini-pro",
     generationConfig: {
       temperature: 0.7,
       maxOutputTokens: 1000,
-    }
+    },
   });
 };
 
@@ -454,12 +491,14 @@ const getGeminiClient = () => {
 const getAIMLConfig = () => {
   const apiKey = import.meta.env.VITE_AIML_API_KEY;
   if (!apiKey) {
-    throw new Error('AIML API key not configured. Please add VITE_AIML_API_KEY to your .env file. Get a key at: https://aimlapi.com/');
+    throw new Error(
+      "AIML API key not configured. Please add VITE_AIML_API_KEY to your .env file. Get a key at: https://aimlapi.com/",
+    );
   }
   return {
     apiKey,
-    baseURL: 'https://api.aimlapi.com/v1/chat/completions',
-    model: 'mistralai/Mistral-7B-Instruct-v0.3'
+    baseURL: "https://api.aimlapi.com/v1/chat/completions",
+    model: "Qwen/Qwen2.5-7B-Instruct-Turbo",
   };
 };
 
@@ -516,15 +555,15 @@ If you don't know something, admit it and suggest consulting appropriate profess
 // Function to get AI response
 export async function getAIResponse(userMessage, context = {}) {
   try {
-    if (AI_PROVIDER === 'gemini') {
+    if (AI_PROVIDER === "gemini") {
       return await getGeminiResponse(userMessage, context);
-    } else if (AI_PROVIDER === 'mistral') {
+    } else if (AI_PROVIDER === "mistral") {
       return await getMistralResponse(userMessage, context);
     } else {
       return await getOpenAIResponse(userMessage, context);
     }
   } catch (error) {
-    console.error('AI response error:', error);
+    console.error("AI response error:", error);
     return "I'm sorry, I'm having trouble connecting right now. Please try again later or contact our support team.";
   }
 }
@@ -533,90 +572,90 @@ export async function getAIResponse(userMessage, context = {}) {
 async function getOpenAIResponse(userMessage, context = {}) {
   const openai = getOpenAIClient();
   const messages = [
-    { role: 'system', content: SYSTEM_PROMPT },
-    { role: 'user', content: userMessage }
+    { role: "system", content: SYSTEM_PROMPT },
+    { role: "user", content: userMessage },
   ];
 
   // Add context if available
   if (context.userLocation) {
     messages.splice(1, 0, {
-      role: 'system',
-      content: `User location: ${JSON.stringify(context.userLocation)}`
+      role: "system",
+      content: `User location: ${JSON.stringify(context.userLocation)}`,
     });
   }
 
   if (context.userInfo) {
     messages.splice(1, 0, {
-      role: 'system',
-      content: `User context: ${JSON.stringify(context.userInfo)}`
+      role: "system",
+      content: `User context: ${JSON.stringify(context.userInfo)}`,
     });
   }
 
   if (context.nearestPharmacies) {
     messages.splice(1, 0, {
-      role: 'system',
-      content: `Nearest pharmacies to the user: ${JSON.stringify(context.nearestPharmacies)}`
+      role: "system",
+      content: `Nearest pharmacies to the user: ${JSON.stringify(context.nearestPharmacies)}`,
     });
   }
 
   if (context.cartInfo) {
     messages.splice(1, 0, {
-      role: 'system',
-      content: `User cart snapshot: ${JSON.stringify(context.cartInfo)}`
+      role: "system",
+      content: `User cart snapshot: ${JSON.stringify(context.cartInfo)}`,
     });
   }
 
   if (context.orderInfo) {
     messages.splice(1, 0, {
-      role: 'system',
-      content: `Recent user orders: ${JSON.stringify(context.orderInfo)}`
+      role: "system",
+      content: `Recent user orders: ${JSON.stringify(context.orderInfo)}`,
     });
   }
 
   if (context.prescriptionInfo) {
     messages.splice(1, 0, {
-      role: 'system',
-      content: `User prescriptions: ${JSON.stringify(context.prescriptionInfo)}`
+      role: "system",
+      content: `User prescriptions: ${JSON.stringify(context.prescriptionInfo)}`,
     });
   }
 
   if (context.cartInfo) {
     messages.splice(1, 0, {
-      role: 'system',
-      content: `User cart snapshot: ${JSON.stringify(context.cartInfo)}`
+      role: "system",
+      content: `User cart snapshot: ${JSON.stringify(context.cartInfo)}`,
     });
   }
 
   if (context.orderInfo) {
     messages.splice(1, 0, {
-      role: 'system',
-      content: `Recent user orders: ${JSON.stringify(context.orderInfo)}`
+      role: "system",
+      content: `Recent user orders: ${JSON.stringify(context.orderInfo)}`,
     });
   }
 
   if (context.prescriptionInfo) {
     messages.splice(1, 0, {
-      role: 'system',
-      content: `User prescriptions: ${JSON.stringify(context.prescriptionInfo)}`
+      role: "system",
+      content: `User prescriptions: ${JSON.stringify(context.prescriptionInfo)}`,
     });
   }
 
   if (context.productInfo) {
     messages.splice(1, 0, {
-      role: 'system',
-      content: `Available products in our app: ${JSON.stringify(context.productInfo)}`
+      role: "system",
+      content: `Available products in our app: ${JSON.stringify(context.productInfo)}`,
     });
   }
 
   if (context.pharmacyInfo) {
     messages.splice(1, 0, {
-      role: 'system',
-      content: `Available pharmacies in our network: ${JSON.stringify(context.pharmacyInfo)}`
+      role: "system",
+      content: `Available pharmacies in our network: ${JSON.stringify(context.pharmacyInfo)}`,
     });
   }
 
   const completion = await openai.chat.completions.create({
-    model: 'gpt-3.5-turbo',
+    model: "gpt-3.5-turbo",
     messages: messages,
     max_tokens: 500,
     temperature: 0.7,
@@ -629,7 +668,7 @@ async function getOpenAIResponse(userMessage, context = {}) {
 async function getGeminiResponse(userMessage, context = {}) {
   const model = getGeminiClient();
 
-  let prompt = SYSTEM_PROMPT + '\n\n';
+  let prompt = SYSTEM_PROMPT + "\n\n";
   prompt += `User message: ${userMessage}\n\n`;
 
   // Add context if available
@@ -665,7 +704,7 @@ async function getGeminiResponse(userMessage, context = {}) {
     prompt += `Available pharmacies in our network: ${JSON.stringify(context.pharmacyInfo)}\n\n`;
   }
 
-  prompt += 'Please provide a helpful response:';
+  prompt += "Please provide a helpful response:";
 
   const result = await model.generateContent(prompt);
   const response = await result.response;
@@ -676,51 +715,51 @@ async function getGeminiResponse(userMessage, context = {}) {
 async function getMistralResponse(userMessage, context = {}) {
   const config = getAIMLConfig();
   const messages = [
-    { role: 'system', content: SYSTEM_PROMPT },
-    { role: 'user', content: userMessage }
+    { role: "system", content: SYSTEM_PROMPT },
+    { role: "user", content: userMessage },
   ];
 
   // Add context if available
   if (context.userLocation) {
     messages.splice(1, 0, {
-      role: 'system',
-      content: `User location: ${JSON.stringify(context.userLocation)}`
+      role: "system",
+      content: `User location: ${JSON.stringify(context.userLocation)}`,
     });
   }
 
   if (context.userInfo) {
     messages.splice(1, 0, {
-      role: 'system',
-      content: `User context: ${JSON.stringify(context.userInfo)}`
+      role: "system",
+      content: `User context: ${JSON.stringify(context.userInfo)}`,
     });
   }
 
   if (context.nearestPharmacies) {
     messages.splice(1, 0, {
-      role: 'system',
-      content: `Nearest pharmacies to the user: ${JSON.stringify(context.nearestPharmacies)}`
+      role: "system",
+      content: `Nearest pharmacies to the user: ${JSON.stringify(context.nearestPharmacies)}`,
     });
   }
 
   if (context.productInfo) {
     messages.splice(1, 0, {
-      role: 'system',
-      content: `Available products in our app: ${JSON.stringify(context.productInfo)}`
+      role: "system",
+      content: `Available products in our app: ${JSON.stringify(context.productInfo)}`,
     });
   }
 
   if (context.pharmacyInfo) {
     messages.splice(1, 0, {
-      role: 'system',
-      content: `Available pharmacies in our network: ${JSON.stringify(context.pharmacyInfo)}`
+      role: "system",
+      content: `Available pharmacies in our network: ${JSON.stringify(context.pharmacyInfo)}`,
     });
   }
 
   const response = await fetch(config.baseURL, {
-    method: 'POST',
+    method: "POST",
     headers: {
-      'Authorization': `Bearer ${config.apiKey}`,
-      'Content-Type': 'application/json',
+      Authorization: `Bearer ${config.apiKey}`,
+      "Content-Type": "application/json",
     },
     body: JSON.stringify({
       model: config.model,
@@ -731,7 +770,9 @@ async function getMistralResponse(userMessage, context = {}) {
   });
 
   if (!response.ok) {
-    throw new Error(`AIML API error: ${response.status} ${response.statusText}`);
+    throw new Error(
+      `AIML API error: ${response.status} ${response.statusText}`,
+    );
   }
 
   const data = await response.json();
@@ -741,15 +782,15 @@ async function getMistralResponse(userMessage, context = {}) {
 // Function to get product recommendations based on user query
 export async function getProductRecommendations(query, products = []) {
   try {
-    if (AI_PROVIDER === 'gemini') {
+    if (AI_PROVIDER === "gemini") {
       return await getGeminiProductRecommendations(query, products);
-    } else if (AI_PROVIDER === 'mistral') {
+    } else if (AI_PROVIDER === "mistral") {
       return await getMistralProductRecommendations(query, products);
     } else {
       return await getOpenAIProductRecommendations(query, products);
     }
   } catch (error) {
-    console.error('Product recommendation error:', error);
+    console.error("Product recommendation error:", error);
     return "I couldn't load product recommendations right now. Please browse our products directly.";
   }
 }
@@ -757,26 +798,26 @@ export async function getProductRecommendations(query, products = []) {
 // OpenAI product recommendations
 async function getOpenAIProductRecommendations(query, products = []) {
   const openai = getOpenAIClient();
-  const productContext = products.map(p => ({
+  const productContext = products.map((p) => ({
     name: p.name,
     description: p.description,
     category: p.category,
-    price: p.price
+    price: p.price,
   }));
 
   const messages = [
     {
-      role: 'system',
-      content: `You are a product recommendation assistant. Based on the user's query and available products, suggest relevant products. Only recommend products that actually exist in the provided list. If no relevant products exist, suggest consulting a pharmacist. Keep recommendations brief and helpful.`
+      role: "system",
+      content: `You are a product recommendation assistant. Based on the user's query and available products, suggest relevant products. Only recommend products that actually exist in the provided list. If no relevant products exist, suggest consulting a pharmacist. Keep recommendations brief and helpful.`,
     },
     {
-      role: 'user',
-      content: `User query: "${query}"\n\nAvailable products: ${JSON.stringify(productContext)}\n\nSuggest relevant products if any match the query.`
-    }
+      role: "user",
+      content: `User query: "${query}"\n\nAvailable products: ${JSON.stringify(productContext)}\n\nSuggest relevant products if any match the query.`,
+    },
   ];
 
   const completion = await openai.chat.completions.create({
-    model: 'gpt-3.5-turbo',
+    model: "gpt-3.5-turbo",
     messages: messages,
     max_tokens: 300,
     temperature: 0.3,
@@ -788,11 +829,11 @@ async function getOpenAIProductRecommendations(query, products = []) {
 // Gemini product recommendations
 async function getGeminiProductRecommendations(query, products = []) {
   const model = getGeminiClient();
-  const productContext = products.map(p => ({
+  const productContext = products.map((p) => ({
     name: p.name,
     description: p.description,
     category: p.category,
-    price: p.price
+    price: p.price,
   }));
 
   const prompt = `You are a product recommendation assistant. Based on the user's query and available products, suggest relevant products. Only recommend products that actually exist in the provided list. If no relevant products exist, suggest consulting a pharmacist. Keep recommendations brief and helpful.
@@ -811,29 +852,29 @@ Suggest relevant products if any match the query.`;
 // Mistral product recommendations via AIML API
 async function getMistralProductRecommendations(query, products = []) {
   const config = getAIMLConfig();
-  const productContext = products.map(p => ({
+  const productContext = products.map((p) => ({
     name: p.name,
     description: p.description,
     category: p.category,
-    price: p.price
+    price: p.price,
   }));
 
   const messages = [
     {
-      role: 'system',
-      content: `You are a product recommendation assistant. Based on the user's query and available products, suggest relevant products. Only recommend products that actually exist in the provided list. If no relevant products exist, suggest consulting a pharmacist. Keep recommendations brief and helpful.`
+      role: "system",
+      content: `You are a product recommendation assistant. Based on the user's query and available products, suggest relevant products. Only recommend products that actually exist in the provided list. If no relevant products exist, suggest consulting a pharmacist. Keep recommendations brief and helpful.`,
     },
     {
-      role: 'user',
-      content: `User query: "${query}"\n\nAvailable products: ${JSON.stringify(productContext)}\n\nSuggest relevant products if any match the query.`
-    }
+      role: "user",
+      content: `User query: "${query}"\n\nAvailable products: ${JSON.stringify(productContext)}\n\nSuggest relevant products if any match the query.`,
+    },
   ];
 
   const response = await fetch(config.baseURL, {
-    method: 'POST',
+    method: "POST",
     headers: {
-      'Authorization': `Bearer ${config.apiKey}`,
-      'Content-Type': 'application/json',
+      Authorization: `Bearer ${config.apiKey}`,
+      "Content-Type": "application/json",
     },
     body: JSON.stringify({
       model: config.model,
@@ -844,7 +885,9 @@ async function getMistralProductRecommendations(query, products = []) {
   });
 
   if (!response.ok) {
-    throw new Error(`AIML API error: ${response.status} ${response.statusText}`);
+    throw new Error(
+      `AIML API error: ${response.status} ${response.statusText}`,
+    );
   }
 
   const data = await response.json();
@@ -854,21 +897,46 @@ async function getMistralProductRecommendations(query, products = []) {
 // Function to check if query needs medical professional
 export function needsMedicalProfessional(query) {
   const medicalKeywords = [
-    'diagnosis', 'diagnose', 'treatment', 'treat', 'cure', 'medicine', 'medication',
-    'prescription', 'prescribe', 'dosage', 'dose', 'symptoms', 'symptom',
-    'pain', 'ache', 'hurt', 'illness', 'disease', 'condition', 'sick',
-    'emergency', 'urgent', 'serious', 'severe', 'chronic', 'acute'
+    "diagnosis",
+    "diagnose",
+    "treatment",
+    "treat",
+    "cure",
+    "medicine",
+    "medication",
+    "prescription",
+    "prescribe",
+    "dosage",
+    "dose",
+    "symptoms",
+    "symptom",
+    "pain",
+    "ache",
+    "hurt",
+    "illness",
+    "disease",
+    "condition",
+    "sick",
+    "emergency",
+    "urgent",
+    "serious",
+    "severe",
+    "chronic",
+    "acute",
   ];
 
   const lowerQuery = query.toLowerCase();
-  return medicalKeywords.some(keyword => lowerQuery.includes(keyword));
+  return medicalKeywords.some((keyword) => lowerQuery.includes(keyword));
 }
 
 // Function to add medical disclaimer to response
 export function addMedicalDisclaimer(response, options = {}) {
   if (!response) return response;
   if (needsMedicalProfessional(response)) {
-    return response + '\n\n⚠️ **Medical Disclaimer:** This is general information only and not medical advice. Please consult with a healthcare professional for personalized medical recommendations.';
+    return (
+      response +
+      "\n\n⚠️ **Medical Disclaimer:** This is general information only and not medical advice. Please consult with a healthcare professional for personalized medical recommendations."
+    );
   }
   return response;
 }
