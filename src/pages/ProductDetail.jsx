@@ -15,12 +15,43 @@ import { calculatePharmacyETA } from '@/lib/eta';
 import ProductDetailSkeletonMobile from '@/components/ProductDetailSkeletonMobile';
 import ProductDetailSkeletonDesktop from '@/components/ProductDetailSkeletonDesktop';
 
+// Reusable Contact Buttons Component
+function ContactButtons({ phone, size = 'md' }) {
+  const whatsappNumber = phone?.replace(/\D/g, '');
+  const isSmall = size === 'sm';
+  return (
+    <div className={`flex flex-row gap-2 w-full`}>
+      <a
+        href={`tel:${phone || ''}`}
+        className={`flex-1 ${isSmall ? 'max-w-[140px] h-10 text-[13px]' : 'h-10 text-[14px]'} rounded-full border border-zinc-400 dark:border-gray-600 font-poppins font-light flex items-center justify-center gap-2 text-zinc-800 dark:text-white bg-white dark:bg-gray-800 btn-interactive hover:border-zinc-500 dark:hover:border-gray-500 hover:scale-105 active:scale-95 transition-all duration-200`}
+        aria-label="Call to Order"
+      >
+        <Phone className="h-4 w-4 text-zinc-800 dark:text-white flex-shrink-0" />
+        Call
+      </a>
+      <a
+        href={`https://wa.me/${whatsappNumber}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={`flex-1 ${isSmall ? 'max-w-[140px] h-10 text-[13px]' : 'h-10 text-[14px]'} rounded-full border border-green-500 font-poppins font-light flex items-center justify-center gap-2 text-green-700 dark:text-green-400 bg-white dark:bg-gray-800 btn-interactive hover:bg-green-50 dark:hover:bg-green-900/20 hover:scale-105 active:scale-95 transition-all duration-200`}
+        aria-label="WhatsApp"
+      >
+        <svg className="h-4 w-4 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z" />
+          <path d="M12 0C5.373 0 0 5.373 0 12c0 2.127.558 4.121 1.533 5.851L.057 23.886a.75.75 0 00.906.975l6.218-1.637A11.944 11.944 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.75a9.714 9.714 0 01-4.983-1.371l-.356-.213-3.695.973.987-3.608-.233-.371A9.718 9.718 0 012.25 12C2.25 6.615 6.615 2.25 12 2.25S21.75 6.615 21.75 12 17.385 21.75 12 21.75z" />
+        </svg>
+        WhatsApp
+      </a>
+    </div>
+  );
+}
+
 export default function ProductDetail({ product, pharmacy }) {
   const { user } = useAuth();
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { userCoords } = useUserLocation();
-  
+
   if (!product) return null;
 
   const price = Number(product.price || 0);
@@ -53,7 +84,6 @@ export default function ProductDetail({ product, pharmacy }) {
         }
       }
     };
-    
     checkWishlistStatus();
   }, [user, product]);
 
@@ -132,7 +162,6 @@ export default function ProductDetail({ product, pharmacy }) {
   // Submit review to Firestore
   async function handleReviewSubmit(e) {
     e.preventDefault();
-    // Allow submit if either rating or comment is provided
     if (!reviewForm.rating && !reviewForm.comment) return;
     setSubmitting(true);
     try {
@@ -145,7 +174,6 @@ export default function ProductDetail({ product, pharmacy }) {
         userId: user?.uid || null,
       });
       setReviewForm({ name: user?.displayName || '', rating: '', comment: '' });
-      // Refresh reviews
       const q = query(reviewsRef, orderBy('createdAt', 'desc'));
       const snap = await getDocs(q);
       setReviews(snap.docs.map(d => ({ id: d.id, ...d.data() })));
@@ -163,13 +191,11 @@ export default function ProductDetail({ product, pharmacy }) {
       const likeDocRef = firestoreDoc(db, 'products', product.id, 'reviews', reviewId, 'likes', user.uid);
       const reviewDocRef = firestoreDoc(db, 'products', product.id, 'reviews', reviewId);
       if (userLikedReviews[reviewId]) {
-        // Unlike: remove like doc and decrement likes
         await deleteDoc(likeDocRef);
         await updateDoc(reviewDocRef, { likes: increment(-1) });
         setReviews(reviews => reviews.map(r => r.id === reviewId ? { ...r, likes: Math.max((r.likes || 1) - 1, 0) } : r));
         setUserLikedReviews(likes => ({ ...likes, [reviewId]: false }));
       } else {
-        // Like: add like doc and increment likes
         await setDoc(likeDocRef, { likedAt: serverTimestamp(), userId: user.uid });
         await updateDoc(reviewDocRef, { likes: increment(1) });
         setReviews(reviews => reviews.map(r => r.id === reviewId ? { ...r, likes: (r.likes || 0) + 1 } : r));
@@ -182,7 +208,6 @@ export default function ProductDetail({ product, pharmacy }) {
     }
   }
 
-  // Optional: gate by auth, as in your original
   if (!user) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-white">
@@ -201,14 +226,14 @@ export default function ProductDetail({ product, pharmacy }) {
   function StarRating({ value, onChange, disabled }) {
     return (
       <div className="flex gap-1 mb-2" role="radiogroup" aria-label="Rating">
-        {[1,2,3,4,5].map(r => (
+        {[1, 2, 3, 4, 5].map(r => (
           <button
             key={r}
             type="button"
             onClick={() => !disabled && onChange(r)}
             onKeyDown={e => { if (!disabled && (e.key === 'Enter' || e.key === ' ')) onChange(r); }}
             tabIndex={0}
-            aria-label={`${r} Star${r>1?'s':''}`}
+            aria-label={`${r} Star${r > 1 ? 's' : ''}`}
             aria-checked={value === r}
             className={`transition-all duration-150 focus:outline-none ${value >= r ? 'text-amber-400 scale-110' : 'text-zinc-300'} hover:scale-125 active:scale-95`}
           >
@@ -250,9 +275,7 @@ export default function ProductDetail({ product, pharmacy }) {
       alert(t('please_sign_in_wishlist', 'Please sign in to add items to your wishlist'));
       return;
     }
-
     if (wishlistLoading) return;
-    
     setWishlistLoading(true);
     try {
       if (isWishlist) {
@@ -278,7 +301,6 @@ export default function ProductDetail({ product, pharmacy }) {
   };
 
   function handleMessageVendor() {
-    // Pass product info and prefill message to chat thread
     const params = new URLSearchParams({
       productId: product?.id || '',
       productName: product?.name || '',
@@ -303,16 +325,12 @@ export default function ProductDetail({ product, pharmacy }) {
         <div className="flex items-center gap-2">
           <button
             type="button"
-            className={`p-2 rounded-full border border-zinc-200 bg-white hover:scale-110 active:scale-95 transition-all duration-200 ${
-              isWishlist ? 'bg-red-50 hover:bg-red-100' : 'hover:bg-red-50'
-            } ${wishlistLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+            className={`p-2 rounded-full border border-zinc-200 bg-white hover:scale-110 active:scale-95 transition-all duration-200 ${isWishlist ? 'bg-red-50 hover:bg-red-100' : 'hover:bg-red-50'} ${wishlistLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
             aria-label={isWishlist ? "Remove from wishlist" : "Add to wishlist"}
             onClick={handleWishlistToggle}
             disabled={wishlistLoading}
           >
-            <Heart className={`w-5 h-5 transition-colors ${
-              isWishlist ? 'text-red-500 fill-current' : 'text-red-400'
-            }`} />
+            <Heart className={`w-5 h-5 transition-colors ${isWishlist ? 'text-red-500 fill-current' : 'text-red-400'}`} />
           </button>
           <button
             type="button"
@@ -335,184 +353,157 @@ export default function ProductDetail({ product, pharmacy }) {
         <div className="w-full max-w-full md:max-w-2xl lg:max-w-4xl xl:max-w-6xl mx-auto px-0 md:px-8 lg:px-12 xl:px-0">
           {/* Sticky back button + share icon */}
           <div className="pt-6 sticky top-0 z-20 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md pb-2 animate-slide-down-fade items-center justify-between hidden md:flex">
-          <button
-            onClick={() => navigate(-1)}
-            className="w-[70px] h-[24px] font-poppins font-extralight tracking-tight text-[12px] flex items-center justify-center rounded-full bg-white dark:bg-gray-800 border border-zinc-300 dark:border-gray-600 dark:border-gray-600 text-gray-900 dark:text-white hover:scale-105 hover:shadow-md transition-all duration-200 active:scale-95"
-          >
-            <ArrowLeft className="h-4 w-4 mr-1" /> {t('back', 'Back')}
-          </button>
-          <div className="flex items-center gap-2">
             <button
-              type="button"
-              className={`p-2 rounded-full border border-zinc-200 dark:border-gray-600 bg-white dark:bg-gray-800 hover:scale-110 active:scale-95 transition-all duration-200 ${
-                isWishlist ? 'bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30' : 'hover:bg-red-50 dark:hover:bg-red-900/20'
-              } ${wishlistLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
-              aria-label={isWishlist ? "Remove from wishlist" : "Add to wishlist"}
-              onClick={handleWishlistToggle}
-              disabled={wishlistLoading}
+              onClick={() => navigate(-1)}
+              className="w-[70px] h-[24px] font-poppins font-extralight tracking-tight text-[12px] flex items-center justify-center rounded-full bg-white dark:bg-gray-800 border border-zinc-300 dark:border-gray-600 text-gray-900 dark:text-white hover:scale-105 hover:shadow-md transition-all duration-200 active:scale-95"
             >
-              <Heart className={`w-5 h-5 transition-colors ${
-                isWishlist ? 'text-red-500 fill-current' : 'text-red-400'
-              }`} />
+              <ArrowLeft className="h-4 w-4 mr-1" /> {t('back', 'Back')}
             </button>
-            <button
-              type="button"
-              className="p-2 rounded-full border border-zinc-200 dark:border-gray-600 bg-white dark:bg-gray-800 hover:bg-sky-50 dark:hover:bg-sky-900/20 hover:scale-110 active:scale-95 transition-all duration-200"
-              aria-label="Share product"
-              onClick={() => setShowShareOptions(true)}
-            >
-              <Share2 className="w-5 h-5 text-sky-600" />
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                className={`p-2 rounded-full border border-zinc-200 dark:border-gray-600 bg-white dark:bg-gray-800 hover:scale-110 active:scale-95 transition-all duration-200 ${isWishlist ? 'bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30' : 'hover:bg-red-50 dark:hover:bg-red-900/20'} ${wishlistLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                aria-label={isWishlist ? "Remove from wishlist" : "Add to wishlist"}
+                onClick={handleWishlistToggle}
+                disabled={wishlistLoading}
+              >
+                <Heart className={`w-5 h-5 transition-colors ${isWishlist ? 'text-red-500 fill-current' : 'text-red-400'}`} />
+              </button>
+              <button
+                type="button"
+                className="p-2 rounded-full border border-zinc-200 dark:border-gray-600 bg-white dark:bg-gray-800 hover:bg-sky-50 dark:hover:bg-sky-900/20 hover:scale-110 active:scale-95 transition-all duration-200"
+                aria-label="Share product"
+                onClick={() => setShowShareOptions(true)}
+              >
+                <Share2 className="w-5 h-5 text-sky-600" />
+              </button>
+            </div>
           </div>
-        </div>
 
-        {/* Grey details sheet (border/rounded only on md+; mobile is full-bleed) */}
-        <div className="mt-1 md:border md:rounded-t-3xl md:max-w-4xl md:border-zinc-100 dark:md:border-gray-700 animate-fade-in-up">
-          <div className="w-full max-w-full md:max-w-2xl lg:max-w-4xl xl:max-w-6xl mx-auto px-0 md:px-8 lg:px-12 xl:px-0 pt-6 pb-36">
+          {/* Grey details sheet */}
+          <div className="mt-1 md:border md:rounded-t-3xl md:max-w-4xl md:border-zinc-100 dark:md:border-gray-700 animate-fade-in-up">
+            <div className="w-full max-w-full md:max-w-2xl lg:max-w-4xl xl:max-w-6xl mx-auto px-0 md:px-8 lg:px-12 xl:px-0 pt-6 pb-36">
 
-            {/* CENTRAL CONTENT: two-column on desktop, stacked on mobile */}
-            <div className="mx-auto w-full">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+              {/* CENTRAL CONTENT */}
+              <div className="mx-auto w-full">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
 
-                {/* LEFT: Product image (widget-style) */}
-                <div className="md:rounded-2xl md:p-4 md:border flex flex-col items-center justify-center w-full card-interactive hover:shadow-lg transition-all duration-300 animate-fade-in-left">
-                  {/* show image when available and not errored; otherwise show initials avatar */}
-                  {product?.image && !imageError ? (
-                    <img
-                      src={product.image}
-                      alt={product.name}
-                      onError={() => setImageError(true)}
-                      className="w-[68vw] h-[58vw] md:h-auto md:max-h-[160px] lg:max-h-[360px] object-cover md:object-contain hover:scale-105 transition-transform duration-300"
-                    />
-                  ) : (
-                    <div className="h-[100px] lg:h-[200px] w-full flex items-center justify-center bg-zinc-100 dark:bg-gray-700 rounded-md text-3xl font-semibold text-zinc-800 dark:text-zinc-200 animate-bounce-gentle">
-                      <ProductAvatar name={product.name} image={product.image} category={product.category} size={48} lg:size={80} roundedClass="rounded-md" />
-                    </div>
-                  )}
-
-                  {/* CTAs moved here: stacked vertically under the image (desktop only) */}
-                  <div className="w-full mt-4 hidden lg:flex flex-col gap-3">
-                    <button
-                      onClick={async () => {
-                        if (!user) return alert('Please sign in');
-                        if (!product.id) return alert(t('product_unavailable', 'Product unavailable. Please try again.'));
-                        try { await addToCart(user.uid, product.id, 1); } catch { alert(t('failed_add_to_cart', 'Failed to add to cart.')); }
-                      }}
-                      className="w-full h-10 rounded-full bg-sky-600 text-white text-[14px] font-poppins font-light shadow-sm btn-interactive hover:bg-sky-700 hover:scale-105 active:scale-95 transition-all duration-200"
-                      aria-label={t('add_to_cart', 'Add to Cart')}
-                    >
-                      {t('add_to_cart', 'Add to Cart')}
-                    </button>
-
-                    <a
-                      href={`tel:${pharmacy?.phone || ''}`}
-                      className="w-full h-10 rounded-full border border-zinc-400 dark:border-gray-600 text-[14px] font-poppins font-light flex items-center justify-center gap-2 text-zinc-800 dark:text-white bg-white dark:bg-gray-800 btn-interactive hover:border-zinc-500 dark:hover:border-gray-500 hover:scale-105 active:scale-95 transition-all duration-200"
-                      aria-label={t('call_to_order', 'Call to Order')}
-                    >
-                      <Phone className="h-4 w-4 text-zinc-800 dark:text-white" /> {t('call_to_order', 'Call to Order')}
-                    </a>
-                  </div>
-                </div>
-
-                {/* RIGHT: stacked widgets */}
-                <div className="flex flex-col animate-fade-in-right">
-                  {/* Name + Price row (mobile): price shown on mobile here and hidden on lg */}
-                  <div className="mb-3 flex items-start justify-between animate-slide-up" style={{ animationDelay: '0.1s' }}>
-                    <h1 className="text-[18px] lg:text-[20px] font-poppins font-medium tracking-tight leading-tight min-w-0 animate-text-reveal text-gray-900 dark:text-white">
-                      {product.name}
-                    </h1>
-                    <div className="text-[18px] text-sky-600 dark:text-sky-400 font-poppins font-semibold lg:hidden animate-pulse-slow">₦{price.toLocaleString()}</div>
-                  </div>
-
-                  {/* Price for lg screens (desktop): hidden on mobile */}
-                  <div className="mb-4 hidden lg:block animate-fade-in" style={{ animationDelay: '0.2s' }}>
-                    <div className="text-[20px] text-sky-600 dark:text-sky-400 font-poppins font-semibold animate-pulse-slow">₦{price.toLocaleString()}</div>
-                  </div>
-
-                  {/* Pharmacy name (always under the product name on mobile) */}
-                  <div className="mb-2 animate-fade-in" style={{ animationDelay: '0.3s' }}>
-                    <button
-                    onClick={() => navigate(`/vendor/${pharmacy?.id || product.pharmacyId}`)}
-                    className="text-sky-600 dark:text-sky-400 underline font-poppins text-[15px] font-light hover:text-sky-700 dark:hover:text-sky-300 transition-colors duration-200 hover:scale-105"
-                  >
-                      <VerifiedName
-                        name={pharmacy?.name || t('pharmacy', 'Pharmacy')}
-                        isVerified={pharmacy?.isVerified}
-                        className="inline-flex items-center gap-1"
-                        nameClassName="underline decoration-inherit underline-offset-2"
-                        iconClassName="h-3.5 w-3.5 text-sky-500 dark:text-sky-400"
+                  {/* LEFT: Product image */}
+                  <div className="md:rounded-2xl md:p-4 md:border flex flex-col items-center justify-center w-full card-interactive hover:shadow-lg transition-all duration-300 animate-fade-in-left">
+                    {product?.image && !imageError ? (
+                      <img
+                        src={product.image}
+                        alt={product.name}
+                        onError={() => setImageError(true)}
+                        className="w-[68vw] h-[58vw] md:h-auto md:max-h-[160px] lg:max-h-[360px] object-cover md:object-contain hover:scale-105 transition-transform duration-300"
                       />
-                    </button>
-                  </div>
-
-                  {/* Address row: address on left, Get Directions on right (mobile). On lg the Get Directions is the separate block below. */}
-                  <div className="mb-1 flex items-center justify-between gap-2 text-zinc-600 dark:text-zinc-300 text-[13px] font-poppins font-light animate-fade-in" style={{ animationDelay: '0.4s' }}>
-                    <div className="flex items-center gap-2 flex-1 min-w-0">
-                      <MapPin className="h-4 w-4 flex-shrink-0" />
-                      <span className="truncate">{pharmacy?.address}</span>
-                    </div>
-
-                    {pharmacy?.address && (
-                      <button
-                        onClick={() => {
-                          const query = encodeURIComponent(pharmacy.address);
-                          window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, '_blank');
-                        }}
-                        className="text-sky-600 dark:text-sky-400 text-[13px] font-poppins font-light px-2 py-1 rounded-full hover:bg-sky-50 dark:hover:bg-sky-900/20 transition-all duration-200 lg:hidden hover:scale-105 active:scale-95"
-                        aria-label="Get directions"
-                      >
-                        <DirectionsIcon className="h-4 w-4 inline-block mr-1" /> {t('get_directions', 'Get Directions')}
-                      </button>
+                    ) : (
+                      <div className="h-[100px] lg:h-[200px] w-full flex items-center justify-center bg-zinc-100 dark:bg-gray-700 rounded-md text-3xl font-semibold text-zinc-800 dark:text-zinc-200 animate-bounce-gentle">
+                        <ProductAvatar name={product.name} image={product.image} category={product.category} size={48} roundedClass="rounded-md" />
+                      </div>
                     )}
-                  </div>
 
-                  {/* ETA below the address (mobile and desktop) */}
-                  <div className="mb-3 flex items-center gap-2 text-zinc-600 dark:text-zinc-300 text-[13px] font-poppins font-light animate-fade-in" style={{ animationDelay: '0.5s' }}>
-                    <Clock className="h-4 w-4" /> 
-                    {etaInfo 
-                      ? t('eta_to_pharmacy', '{time} to {pharmacy}').replace('{time}', etaInfo.formatted).replace('{pharmacy}', pharmacy?.name) 
-                      : userCoords 
-                        ? t('calculating_eta', 'Calculating ETA...') 
-                        : t('fetching_location', 'Fetching location...')
-                    }
-                  </div>
-
-                  {/* Get Directions for lg (desktop) - keep original placement on larger screens */}
-                  {pharmacy?.address && (
-                    <div className="mb-4 hidden lg:block animate-fade-in" style={{ animationDelay: '0.6s' }}>
+                    {/* Desktop CTAs */}
+                    <div className="w-full mt-4 hidden lg:flex flex-col gap-3">
                       <button
-                        className="flex items-center gap-2 text-sky-600 dark:text-sky-400 text-[13px] font-poppins font-light px-3 py-2 rounded-full hover:bg-sky-50 dark:hover:bg-sky-900/20 transition-all duration-200 hover:scale-105 active:scale-95"
-                        onClick={() => {
-                          const query = encodeURIComponent(pharmacy.address);
-                          window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, '_blank');
+                        onClick={async () => {
+                          if (!user) return alert('Please sign in');
+                          if (!product.id) return alert(t('product_unavailable', 'Product unavailable. Please try again.'));
+                          try { await addToCart(user.uid, product.id, 1); } catch { alert(t('failed_add_to_cart', 'Failed to add to cart.')); }
                         }}
+                        className="w-full h-10 rounded-full bg-sky-600 text-white text-[14px] font-poppins font-light shadow-sm btn-interactive hover:bg-sky-700 hover:scale-105 active:scale-95 transition-all duration-200"
+                        aria-label={t('add_to_cart', 'Add to Cart')}
                       >
-                        <DirectionsIcon className="h-4 w-4 text-sky-600 dark:text-sky-400" /> Get Directions
+                        {t('add_to_cart', 'Add to Cart')}
+                      </button>
+
+                      {/* Desktop: Call + WhatsApp */}
+                      <ContactButtons phone={pharmacy?.phone} />
+                    </div>
+                  </div>
+
+                  {/* RIGHT: stacked widgets */}
+                  <div className="flex flex-col animate-fade-in-right">
+                    {/* Name + Price row */}
+                    <div className="mb-3 flex items-start justify-between animate-slide-up" style={{ animationDelay: '0.1s' }}>
+                      <h1 className="text-[18px] lg:text-[20px] font-poppins font-medium tracking-tight leading-tight min-w-0 animate-text-reveal text-gray-900 dark:text-white">
+                        {product.name}
+                      </h1>
+                      <div className="text-[18px] text-sky-600 dark:text-sky-400 font-poppins font-semibold lg:hidden animate-pulse-slow">₦{price.toLocaleString()}</div>
+                    </div>
+
+                    {/* Price for lg screens */}
+                    <div className="mb-4 hidden lg:block animate-fade-in" style={{ animationDelay: '0.2s' }}>
+                      <div className="text-[20px] text-sky-600 dark:text-sky-400 font-poppins font-semibold animate-pulse-slow">₦{price.toLocaleString()}</div>
+                    </div>
+
+                    {/* Pharmacy name */}
+                    <div className="mb-2 animate-fade-in" style={{ animationDelay: '0.3s' }}>
+                      <button
+                        onClick={() => navigate(`/vendor/${pharmacy?.id || product.pharmacyId}`)}
+                        className="text-sky-600 dark:text-sky-400 underline font-poppins text-[15px] font-light hover:text-sky-700 dark:hover:text-sky-300 transition-colors duration-200 hover:scale-105"
+                      >
+                        <VerifiedName
+                          name={pharmacy?.name || t('pharmacy', 'Pharmacy')}
+                          isVerified={pharmacy?.isVerified}
+                          className="inline-flex items-center gap-1"
+                          nameClassName="underline decoration-inherit underline-offset-2"
+                          iconClassName="h-3.5 w-3.5 text-sky-500 dark:text-sky-400"
+                        />
                       </button>
                     </div>
-                  )}
 
-                  {/* Category (responsive): stacked on lg, inline on smaller screens */}
-                  <div className="mt-2 animate-fade-in" style={{ animationDelay: '0.7s' }}>
-                    {/* Desktop: show label then value underneath */}
-                    <div className="hidden lg:block">
-                      <div className="text-[15px] tracking-tight text-black font-poppins font-medium">{t('category', 'Category')}</div>
-                      <div className="mt-0.5 mb-5">
+                    {/* Address row */}
+                    <div className="mb-1 flex items-center justify-between gap-2 text-zinc-600 dark:text-zinc-300 text-[13px] font-poppins font-light animate-fade-in" style={{ animationDelay: '0.4s' }}>
+                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                        <MapPin className="h-4 w-4 flex-shrink-0" />
+                        <span className="truncate">{pharmacy?.address}</span>
+                      </div>
+                      {pharmacy?.address && (
                         <button
-                          type="button"
-                          onClick={async (e) => { e.stopPropagation(); await fetchProductsByCategory(product.category || 'General'); }}
-                          className="text-[13px] text-[#fc7f26] font-poppins font-normal underline hover:text-amber-500 transition-colors duration-200 hover:scale-105"
+                          onClick={() => {
+                            const query = encodeURIComponent(pharmacy.address);
+                            window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, '_blank');
+                          }}
+                          className="text-sky-600 dark:text-sky-400 text-[13px] font-poppins font-light px-2 py-1 rounded-full hover:bg-sky-50 dark:hover:bg-sky-900/20 transition-all duration-200 lg:hidden hover:scale-105 active:scale-95"
+                          aria-label="Get directions"
                         >
-                          {product.category || 'General'}
+                          <DirectionsIcon className="h-4 w-4 inline-block mr-1" /> {t('get_directions', 'Get Directions')}
+                        </button>
+                      )}
+                    </div>
+
+                    {/* ETA */}
+                    <div className="mb-3 flex items-center gap-2 text-zinc-600 dark:text-zinc-300 text-[13px] font-poppins font-light animate-fade-in" style={{ animationDelay: '0.5s' }}>
+                      <Clock className="h-4 w-4" />
+                      {etaInfo
+                        ? t('eta_to_pharmacy', '{time} to {pharmacy}').replace('{time}', etaInfo.formatted).replace('{pharmacy}', pharmacy?.name)
+                        : userCoords
+                          ? t('calculating_eta', 'Calculating ETA...')
+                          : t('fetching_location', 'Fetching location...')
+                      }
+                    </div>
+
+                    {/* Get Directions (desktop) */}
+                    {pharmacy?.address && (
+                      <div className="mb-4 hidden lg:block animate-fade-in" style={{ animationDelay: '0.6s' }}>
+                        <button
+                          className="flex items-center gap-2 text-sky-600 dark:text-sky-400 text-[13px] font-poppins font-light px-3 py-2 rounded-full hover:bg-sky-50 dark:hover:bg-sky-900/20 transition-all duration-200 hover:scale-105 active:scale-95"
+                          onClick={() => {
+                            const query = encodeURIComponent(pharmacy.address);
+                            window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, '_blank');
+                          }}
+                        >
+                          <DirectionsIcon className="h-4 w-4 text-sky-600 dark:text-sky-400" /> Get Directions
                         </button>
                       </div>
-                    </div>
+                    )}
 
-                    {/* Mobile/tablet: label left, value right on same line */}
-                    <div className="block lg:hidden">
-                      <div className="flex items-center justify-between">
-                        <div className="text-[15px] text-black font-poppins font-medium mb-2">{t('category', 'Category')}</div>
-                        <div>
+                    {/* Category */}
+                    <div className="mt-2 animate-fade-in" style={{ animationDelay: '0.7s' }}>
+                      <div className="hidden lg:block">
+                        <div className="text-[15px] tracking-tight text-black dark:text-white font-poppins font-medium">{t('category', 'Category')}</div>
+                        <div className="mt-0.5 mb-5">
                           <button
                             type="button"
                             onClick={async (e) => { e.stopPropagation(); await fetchProductsByCategory(product.category || 'General'); }}
@@ -522,208 +513,227 @@ export default function ProductDetail({ product, pharmacy }) {
                           </button>
                         </div>
                       </div>
-                    </div>
-                  </div>
-               <div className="mt-4 border-b"></div>
-                  {/* Product description */}
-                  <div className="mt-6 animate-fade-in" style={{ animationDelay: '0.8s' }}>
-                    <div className="text-[15px] font-poppins font-medium tracking-tighter text-zinc-800 dark:text-white">{t('product_description', 'Product Description')}</div>
-                    <p className="mt-2 text-zinc-600 dark:text-zinc-300 leading-6 font-poppins text-[14px] font-light">{product.description}</p>
-                  </div>
-              <div className="mt-8 border-b"></div>
-                  {/* Reviews/Comments Section */}
-                  <div className="mt-8 animate-fade-in-up" style={{ animationDelay: '0.9s' }}>
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <span className="text-[15px] font-poppins font-medium tracking-tighter text-zinc-800 dark:text-white">{t('customer_reviews', 'Customer Reviews')}</span>
-                        <span className="text-sky-400 font-semibold text-[13px]">{reviews.length}</span>
+                      <div className="block lg:hidden">
+                        <div className="flex items-center justify-between">
+                          <div className="text-[15px] text-black dark:text-white font-poppins font-medium mb-2">{t('category', 'Category')}</div>
+                          <div>
+                            <button
+                              type="button"
+                              onClick={async (e) => { e.stopPropagation(); await fetchProductsByCategory(product.category || 'General'); }}
+                              className="text-[13px] text-[#fc7f26] font-poppins font-normal underline hover:text-amber-500 transition-colors duration-200 hover:scale-105"
+                            >
+                              {product.category || 'General'}
+                            </button>
+                          </div>
+                        </div>
                       </div>
-                      {expandedReviews && (
-                        <button className="text-sky-400 text-[13px] font-poppins underline" onClick={() => { setExpandedReviews(false); setVisibleReviews(3); }}>
-                          {t('see_less', 'See less')}
-                        </button>
-                      )}
                     </div>
-                    {/* Reviews List */}
-                    <div className="space-y-4 mb-6">
-                      {loadingReviews ? (
-                        <div className="p-4 text-center text-zinc-400 dark:text-zinc-500 animate-pulse">{t('loading_reviews', 'Loading reviews…')}</div>
-                      ) : reviews.length === 0 ? (
-                        <div className="p-4 text-center text-zinc-400 dark:text-zinc-500 animate-fade-in text-[12px]">{t('no_reviews_yet', 'No reviews yet. Be the first to review!')}</div>
-                      ) : (
-                        reviews.slice(0, visibleReviews).map((review, idx) => {
-                          let dateStr = '';
-                          if (review.createdAt) {
-                            const d = review.createdAt.seconds ? new Date(review.createdAt.seconds * 1000) : new Date(review.createdAt);
-                            dateStr = d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                          }
-                          return (
-                            <div key={review.id || idx} className="p-4 rounded-xl border border-sky-100 dark:border-gray-600 animate-slide-up transition-all duration-200">
-                              <div className="flex items-center justify-between mb-1">
-                                <div className="flex items-center gap-2">
-                                  <span className="font-poppins font-semibold text-[14px] text-zinc-700 dark:text-zinc-200">{review.name}</span>
-                                  <span className="flex gap-0.5 text-amber-400 text-[13px]">{'★'.repeat(review.rating)}{'☆'.repeat(5-review.rating)}</span>
-                                </div>
-                                <div className="flex flex-col items-center justify-center h-full">
-                                  <div className="flex items-center justify-center">
-                                    {/* Show likes count to the left of the button if > 0 */}
-                                    {review.likes > 0 && (
-                                      <span className="text-sky-500 font-semibold text-[13px] mr-1">{review.likes}</span>
-                                    )}
-                                    <button
-                                      className={`flex items-center justify-center px-2 py-1 rounded transition-all duration-200 ${likeLoading[review.id] ? 'opacity-50 pointer-events-none' : ''} ${userLikedReviews[review.id] ? 'bg-sky-50 text-sky-400' : 'text-zinc-400'}`}
-                                      onClick={() => handleLikeReview(review.id)}
-                                      disabled={likeLoading[review.id]}
-                                      aria-label={userLikedReviews[review.id] ? 'Unlike review' : 'Like review'}
-                                      style={{ minHeight: '20px' }}
-                                    >
-                                      <ThumbsUp className="w-4 h-4" fill={userLikedReviews[review.id] ? '#38bdf8' : 'none'} />
-                                    </button>
+
+                    <div className="mt-4 border-b dark:border-gray-700"></div>
+
+                    {/* Product description */}
+                    <div className="mt-6 animate-fade-in" style={{ animationDelay: '0.8s' }}>
+                      <div className="text-[15px] font-poppins font-medium tracking-tighter text-zinc-800 dark:text-white">{t('product_description', 'Product Description')}</div>
+                      <p className="mt-2 text-zinc-600 dark:text-zinc-300 leading-6 font-poppins text-[14px] font-light">{product.description}</p>
+                    </div>
+
+                    <div className="mt-8 border-b dark:border-gray-700"></div>
+
+                    {/* Reviews Section */}
+                    <div className="mt-8 animate-fade-in-up" style={{ animationDelay: '0.9s' }}>
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[15px] font-poppins font-medium tracking-tighter text-zinc-800 dark:text-white">{t('customer_reviews', 'Customer Reviews')}</span>
+                          <span className="text-sky-400 font-semibold text-[13px]">{reviews.length}</span>
+                        </div>
+                        {expandedReviews && (
+                          <button className="text-sky-400 text-[13px] font-poppins underline" onClick={() => { setExpandedReviews(false); setVisibleReviews(3); }}>
+                            {t('see_less', 'See less')}
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Reviews List */}
+                      <div className="space-y-4 mb-6">
+                        {loadingReviews ? (
+                          <div className="p-4 text-center text-zinc-400 dark:text-zinc-500 animate-pulse">{t('loading_reviews', 'Loading reviews…')}</div>
+                        ) : reviews.length === 0 ? (
+                          <div className="p-4 text-center text-zinc-400 dark:text-zinc-500 animate-fade-in text-[12px]">{t('no_reviews_yet', 'No reviews yet. Be the first to review!')}</div>
+                        ) : (
+                          reviews.slice(0, visibleReviews).map((review, idx) => {
+                            let dateStr = '';
+                            if (review.createdAt) {
+                              const d = review.createdAt.seconds ? new Date(review.createdAt.seconds * 1000) : new Date(review.createdAt);
+                              dateStr = d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                            }
+                            return (
+                              <div key={review.id || idx} className="p-4 rounded-xl border border-sky-100 dark:border-gray-600 animate-slide-up transition-all duration-200">
+                                <div className="flex items-center justify-between mb-1">
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-poppins font-semibold text-[14px] text-zinc-700 dark:text-zinc-200">{review.name}</span>
+                                    <span className="flex gap-0.5 text-amber-400 text-[13px]">{'★'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)}</span>
+                                  </div>
+                                  <div className="flex flex-col items-center justify-center h-full">
+                                    <div className="flex items-center justify-center">
+                                      {review.likes > 0 && (
+                                        <span className="text-sky-500 font-semibold text-[13px] mr-1">{review.likes}</span>
+                                      )}
+                                      <button
+                                        className={`flex items-center justify-center px-2 py-1 rounded transition-all duration-200 ${likeLoading[review.id] ? 'opacity-50 pointer-events-none' : ''} ${userLikedReviews[review.id] ? 'bg-sky-50 text-sky-400' : 'text-zinc-400'}`}
+                                        onClick={() => handleLikeReview(review.id)}
+                                        disabled={likeLoading[review.id]}
+                                        aria-label={userLikedReviews[review.id] ? 'Unlike review' : 'Like review'}
+                                        style={{ minHeight: '20px' }}
+                                      >
+                                        <ThumbsUp className="w-4 h-4" fill={userLikedReviews[review.id] ? '#38bdf8' : 'none'} />
+                                      </button>
+                                    </div>
                                   </div>
                                 </div>
-                              </div>
-                              <div className="text-zinc-600 dark:text-zinc-300 text-[13px] font-poppins font-light">{review.comment}</div>
-                              {dateStr && (
-                                <div className="text-[11px] text-zinc-400 dark:text-zinc-500 mt-1">{dateStr}</div>
-                              )}
-                              
-                              {/* Pharmacy Response */}
-                              {review.pharmacyResponse && (
-                                <div className="mt-3 p-3 bg-gradient-to-r from-sky-50 to-blue-50 dark:bg-gradient-to-r dark:from-gray-800 dark:to-gray-700 border border-sky-100 dark:border-gray-600 dark:border-gray-600 rounded-lg shadow-sm">
-                                  <div className="flex items-center gap-2 mb-2">
-                                    <div className="w-2 h-2 bg-sky-500 dark:bg-sky-400 rounded-full"></div>
-                                    <span className="font-poppins font-semibold text-[13px] text-sky-700 dark:text-white">
-                                      {t('pharmacy_response', '{pharmacyName} Response', { pharmacyName: pharmacy?.name || 'Pharmacy' })}
-                                    </span>
-                                    {(review.pharmacyResponse.respondedAt || review.responseDate) && (
-                                      <span className="text-[10px] text-sky-500 dark:text-zinc-300 ml-auto">
-                                        {new Date((review.pharmacyResponse.respondedAt?.seconds || review.responseDate?.seconds || review.responseDate) * 1000).toLocaleDateString()}
+                                <div className="text-zinc-600 dark:text-zinc-300 text-[13px] font-poppins font-light">{review.comment}</div>
+                                {dateStr && (
+                                  <div className="text-[11px] text-zinc-400 dark:text-zinc-500 mt-1">{dateStr}</div>
+                                )}
+
+                                {/* Pharmacy Response */}
+                                {review.pharmacyResponse && (
+                                  <div className="mt-3 p-3 bg-gradient-to-r from-sky-50 to-blue-50 dark:bg-gradient-to-r dark:from-gray-800 dark:to-gray-700 border border-sky-100 dark:border-gray-600 rounded-lg shadow-sm">
+                                    <div className="flex items-center gap-2 mb-2">
+                                      <div className="w-2 h-2 bg-sky-500 dark:bg-sky-400 rounded-full"></div>
+                                      <span className="font-poppins font-semibold text-[13px] text-sky-700 dark:text-white">
+                                        {t('pharmacy_response', '{pharmacyName} Response', { pharmacyName: pharmacy?.name || 'Pharmacy' })}
                                       </span>
-                                    )}
+                                      {(review.pharmacyResponse.respondedAt || review.responseDate) && (
+                                        <span className="text-[10px] text-sky-500 dark:text-zinc-300 ml-auto">
+                                          {new Date((review.pharmacyResponse.respondedAt?.seconds || review.responseDate?.seconds || review.responseDate) * 1000).toLocaleDateString()}
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div className="text-zinc-700 dark:text-white text-[13px] font-poppins leading-relaxed pl-4">
+                                      "{typeof review.pharmacyResponse === 'string' ? review.pharmacyResponse : review.pharmacyResponse.message || review.pharmacyResponse}"
+                                    </div>
                                   </div>
-                                  <div className="text-zinc-700 dark:text-white text-[13px] font-poppins leading-relaxed pl-4">
-                                    "{typeof review.pharmacyResponse === 'string' ? review.pharmacyResponse : review.pharmacyResponse.message || review.pharmacyResponse}"
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })
+                                )}
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
+
+                      {/* See more */}
+                      {reviews.length > visibleReviews && (
+                        <div className="flex justify-start">
+                          <button className="text-sky-400 text-[13px] font-poppins underline" onClick={() => { setVisibleReviews(v => v + 3); setExpandedReviews(true); }}>
+                            {t('see_more', 'See more')}
+                          </button>
+                        </div>
                       )}
-                    </div>
-                    {/* See more button */}
-                    {reviews.length > visibleReviews && (
-                      <div className="flex justify-start">
-                        <button className="text-sky-400 text-[13px] font-poppins underline" onClick={() => { setVisibleReviews(v => v + 3); setExpandedReviews(true); }}>
-                          {t('see_more', 'See more')}
+
+                      <div className="mt-4 border-b dark:border-gray-700"></div>
+
+                      {/* Review Form */}
+                      <form className="p-4 mt-6 rounded-xl border border-zinc-100 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm animate-bounce-in" style={{ animationDelay: '1.0s' }} onSubmit={handleReviewSubmit}>
+                        <div className="mb-2 font-poppins text-[14px] font-medium text-zinc-700 dark:text-zinc-300">{t('leave_a_review', 'Leave a Review')}</div>
+                        <StarRating value={Number(reviewForm.rating)} onChange={r => setReviewForm(f => ({ ...f, rating: r }))} disabled={submitting} />
+                        <input type="text" name="name" value={reviewForm.name} onChange={handleReviewChange} placeholder={t('your_name', 'Your Name')} className="w-full mb-2 px-3 py-2 rounded-lg border border-zinc-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white font-poppins text-[13px] focus:ring-2 focus:ring-sky-200 transition-all duration-200" />
+                        <textarea name="comment" value={reviewForm.comment} onChange={handleReviewChange} placeholder={t('your_review_optional', 'Your review... (optional)')} className="w-full mb-2 px-3 py-2 rounded-lg border border-zinc-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white font-poppins text-[13px] focus:ring-2 focus:ring-sky-200 transition-all duration-200" rows={3} />
+                        <button type="submit" disabled={submitting || (!reviewForm.rating && !reviewForm.comment)} className="w-full h-10 rounded-full border border-sky-500 dark:border-gray-600 text-black dark:text-white text-[14px] font-poppins font-light shadow-sm btn-interactive hover:bg-sky-700 hover:text-white hover:scale-105 active:scale-95 transition-all duration-200">
+                          {submitting ? t('submitting', 'Submitting…') : t('submit_review', 'Submit Review')}
                         </button>
-                      </div>
-                    )}
-                    <div className="mt-4 border-b"></div>
-                    {/* Review Form */}
-                    <form className="p-4 mt-6 rounded-xl border border-zinc-100 bg-white shadow-sm animate-bounce-in" style={{ animationDelay: '1.0s' }} onSubmit={handleReviewSubmit}>
-                      <div className="mb-2 font-poppins text-[14px] font-medium text-zinc-700 dark:text-zinc-300">{t('leave_a_review', 'Leave a Review')}</div>
-                      <StarRating value={Number(reviewForm.rating)} onChange={r => setReviewForm(f => ({ ...f, rating: r }))} disabled={submitting} />
-                        <input type="text" name="name" value={reviewForm.name} onChange={handleReviewChange} placeholder={t('your_name', 'Your Name')} className="w-full mb-2 px-3 py-2 rounded-lg border-zinc-200 font-poppins text-[13px] focus:ring-2 focus:ring-sky-200 transition-all duration-20" />
-                      <textarea name="comment" value={reviewForm.comment} onChange={handleReviewChange} placeholder={t('your_review_optional', 'Your review... (optional)')} className="w-full mb-2 px-3 py-2 rounded-lg border border-zinc-200 font-poppins text-[13px] focus:ring-2 focus:ring-sky-200 transition-all duration-200" rows={3} />
-                      <button type="submit" disabled={submitting || (!reviewForm.rating && !reviewForm.comment)} className="w-full h-10 rounded-full border border-sky-500 dark:border-gray-600 text-black text-[14px] font-poppins font-light shadow-sm btn-interactive hover:bg-sky-700 hover:scale-105 active:scale-95 transition-all duration-200">
-                        {submitting ? t('submitting', 'Submitting…') : t('submit_review', 'Submit Review')}
-                      </button>
-                    </form>
+                      </form>
+                    </div>
                   </div>
-
                 </div>
               </div>
             </div>
-
           </div>
+
+          {/* Mobile fixed bottom CTA */}
+          <div className="fixed left-0 right-0 bottom-[8rem] z-30 lg:hidden animate-slide-up-fade">
+            <div className="w-full max-w-full md:max-w-2xl lg:max-w-4xl xl:max-w-6xl mx-auto px-2 md:px-8 lg:px-12 xl:px-0">
+              <div className="flex flex-row gap-3 justify-center">
+                <button
+                  onClick={async () => {
+                    if (!user) return alert(t('please_sign_in', 'Please sign in'));
+                    if (!product.id) return alert(t('product_unavailable', 'Product unavailable. Please try again.'));
+                    try { await addToCart(user.uid, product.id, 1); } catch { alert(t('failed_add_to_cart', 'Failed to add to cart.')); }
+                  }}
+                  className="flex-1 max-w-[140px] h-10 rounded-full bg-sky-600 text-white text-[13px] font-poppins font-light shadow-sm btn-interactive hover:bg-sky-700 hover:scale-105 active:scale-95 transition-all duration-200"
+                >
+                  {t('add_to_cart', 'Add to Cart')}
+                </button>
+
+                {/* Mobile: Call + WhatsApp */}
+                <ContactButtons phone={pharmacy?.phone} size="sm" />
+              </div>
+            </div>
+          </div>
+
+          {/* Category products modal */}
+          {showCategoryProducts && (
+            <div onClick={() => setShowCategoryProducts(false)} className="fixed inset-0 z-50 flex items-start justify-center pt-24 bg-black/30 dark:bg-black/80 animate-fade-in" role="dialog" aria-modal="true">
+              <div onClick={e => e.stopPropagation()} className="bg-white dark:bg-gray-800 rounded-2xl p-4 w-[90vw] max-w-md max-h-[80vh] overflow-y-auto animate-bounce-in shadow-xl">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="text-lg font-medium animate-text-reveal">{t('products_in_category', 'Products in "{category}"').replace('{category}', product.category || 'General')}</div>
+                  <button onClick={() => setShowCategoryProducts(false)} className="text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300 transition-colors duration-200 hover:scale-110 active:scale-95">{t('close', 'Close')}</button>
+                </div>
+                {loadingCategoryProducts ? (
+                  <div className="p-4 text-center text-zinc-500 dark:text-zinc-400 animate-pulse">{t('loading', 'Loading…')}</div>
+                ) : categoryProducts.length === 0 ? (
+                  <div className="p-4 text-zinc-500 dark:text-zinc-400 animate-fade-in">{t('no_products_found', 'No products found.')}</div>
+                ) : (
+                  <div className="space-y-2">
+                    {categoryProducts.map((p, index) => (
+                      <button
+                        key={p.id}
+                        onClick={() => { setShowCategoryProducts(false); navigate(`/product/${p.id}`); }}
+                        className="w-full text-left rounded-lg p-2 flex items-center gap-3 hover:bg-sky-50 dark:hover:bg-gray-700 transition-all duration-200 card-interactive animate-fadeInUp hover:scale-102"
+                        style={{ animationDelay: `${index * 0.1}s` }}
+                      >
+                        <ProductAvatar name={p.name} image={p.image} category={p.category} size={48} className="flex-shrink-0 animate-bounce-gentle" roundedClass="rounded-md" />
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium text-sm truncate dark:text-white">{p.name}</div>
+                          <div className="text-xs text-zinc-500 dark:text-zinc-400 truncate">{p.category}</div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Share Options Modal */}
+          {showShareOptions && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 dark:bg-black/30 animate-fade-in" role="dialog" aria-modal="true">
+              <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 w-[90vw] max-w-xs shadow-xl animate-bounce-in flex flex-col gap-4">
+                <div className="font-poppins font-medium text-[16px] mb-2 text-center dark:text-white">{t('share_product', 'Share Product')}</div>
+                <button
+                  className="w-full flex items-center gap-2 px-4 py-2 rounded-lg border border-sky-200 dark:border-gray-600 bg-sky-50 dark:bg-gray-700 text-sky-700 dark:text-sky-400 font-poppins font-medium hover:bg-sky-100 dark:hover:bg-gray-600 hover:scale-105 active:scale-95 transition-all duration-200"
+                  onClick={handleShareProduct}
+                >
+                  <Share2 className="w-4 h-4" /> {t('share_product', 'Share Product')}
+                </button>
+                <button
+                  className="w-full flex items-center gap-2 px-4 py-2 rounded-lg border border-zinc-200 dark:border-gray-600 bg-zinc-50 dark:bg-gray-700 text-zinc-700 dark:text-white font-poppins font-medium hover:bg-zinc-100 dark:hover:bg-gray-600 hover:scale-105 active:scale-95 transition-all duration-200"
+                  onClick={handleMessageVendor}
+                >
+                  <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" className="w-4 h-4">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 10h.01M12 10h.01M16 10h.01M21 12c0 4.418-4.03 8-9 8a9.77 9.77 0 01-4-.8l-4 1 1-4A8.96 8.96 0 013 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                  </svg>
+                  {t('message_vendor', 'Message Vendor')}
+                </button>
+                <button
+                  className="mt-2 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300 text-[13px] font-poppins underline"
+                  onClick={() => setShowShareOptions(false)}
+                >
+                  {t('cancel', 'Cancel')}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
-
-        {/* Mobile fixed bottom CTA: visible on small screens, hidden on lg+ */}
-<div className="fixed left-0 right-0 bottom-[8rem] z-30 lg:hidden animate-slide-up-fade">
-  <div className="w-full max-w-full md:max-w-2xl lg:max-w-4xl xl:max-w-6xl mx-auto px-2 md:px-8 lg:px-12 xl:px-0">
-    <div className="flex flex-row gap-3 justify-center">
-      <button
-        onClick={async () => {
-          if (!user) return alert(t('please_sign_in', 'Please sign in'));
-          if (!product.id) return alert(t('product_unavailable', 'Product unavailable. Please try again.'));
-          try { await addToCart(user.uid, product.id, 1); } catch { alert(t('failed_add_to_cart', 'Failed to add to cart.')); }
-        }}
-        className="flex-1 max-w-[140px] h-10 rounded-full bg-sky-600 text-white text-[13px] font-poppins font-light shadow-sm btn-interactive hover:bg-sky-700 hover:scale-105 active:scale-95 transition-all duration-200"
-      >
-        {t('add_to_cart', 'Add to Cart')}
-      </button>
-      <a
-        href={`tel:${pharmacy?.phone || ''}`}
-        className="flex-1 max-w-[140px] h-10 rounded-full border border-zinc-400 dark:border-gray-600 text-[13px] font-poppins font-light flex items-center justify-center gap-2 text-zinc-800 dark:text-white bg-white dark:bg-gray-800 btn-interactive hover:border-zinc-500 dark:hover:border-gray-500 hover:scale-105 active:scale-95 transition-all duration-200"
-      >
-        <Phone className="h-4 w-4 text-zinc-800 dark:text-white" /> {t('call_to_order', 'Call to Order')}
-      </a>
-    </div>
-  </div>
-</div>
-        {/* Category products modal */}
-        {showCategoryProducts && (
-          <div onClick={() => setShowCategoryProducts(false)} className="fixed inset-0 z-50 flex items-start justify-center pt-24 bg-black/30 dark:bg-black/80 animate-fade-in" role="dialog" aria-modal="true">
-            <div onClick={e => e.stopPropagation()} className="bg-white dark:bg-gray-800 rounded-2xl p-4 w-[90vw] max-w-md max-h-[80vh] overflow-y-auto animate-bounce-in shadow-xl">
-              <div className="flex items-center justify-between mb-3">
-                <div className="text-lg font-medium animate-text-reveal">{t('products_in_category', 'Products in "{category}"').replace('{category}', product.category || 'General')}</div>
-                <button onClick={() => setShowCategoryProducts(false)} className="text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300 transition-colors duration-200 hover:scale-110 active:scale-95">{t('close', 'Close')}</button>
-              </div>
-
-              {loadingCategoryProducts ? (
-                <div className="p-4 text-center text-zinc-500 dark:text-zinc-400 animate-pulse">{t('loading', 'Loading…')}</div>
-              ) : categoryProducts.length === 0 ? (
-                <div className="p-4 text-zinc-500 dark:text-zinc-400 animate-fade-in">{t('no_products_found', 'No products found.')}</div>
-              ) : (
-                <div className="space-y-2">
-                  {categoryProducts.map((p, index) => (
-                    <button 
-                      key={p.id} 
-                      onClick={() => { setShowCategoryProducts(false); navigate(`/product/${p.id}`); }} 
-                      className="w-full text-left rounded-lg p-2 flex items-center gap-3 hover:bg-sky-50 transition-all duration-200 card-interactive animate-fadeInUp hover:scale-102"
-                      style={{ animationDelay: `${index * 0.1}s` }}
-                    >
-                      <ProductAvatar name={p.name} image={p.image} category={p.category} size={48} className="flex-shrink-0 animate-bounce-gentle" roundedClass="rounded-md" />
-                      <div className="flex-1 min-w-0">
-                        <div className="font-medium text-sm truncate">{p.name}</div>
-                        <div className="text-xs text-zinc-500 truncate">{p.category}</div>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Share Options Modal/Dropdown */}
-        {showShareOptions && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 dark:bg-black/30 animate-fade-in" role="dialog" aria-modal="true">
-            <div className="bg-white rounded-2xl p-6 w-[90vw] max-w-xs shadow-xl animate-bounce-in flex flex-col gap-4">
-              <div className="font-poppins font-medium text-[16px] mb-2 text-center">{t('share_product', 'Share Product')}</div>
-              <button
-                className="w-full flex items-center gap-2 px-4 py-2 rounded-lg border border-sky-200 dark:border-gray-600 bg-sky-50 text-sky-700 font-poppins font-medium hover:bg-sky-100 hover:scale-105 active:scale-95 transition-all duration-200"
-                onClick={handleShareProduct}
-              >
-                <Share2 className="w-4 h-4" /> {t('share_product', 'Share Product')}
-              </button>
-              <button
-                className="w-full flex items-center gap-2 px-4 py-2 rounded-lg border border-zinc-200 bg-zinc-50 text-zinc-700 dark:bg-gray-700 dark:text-white dark:border-gray-600 font-poppins font-medium hover:bg-zinc-100 dark:hover:bg-gray-600 hover:scale-105 active:scale-95 transition-all duration-200"
-                onClick={handleMessageVendor}
-              >
-                <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 10h.01M12 10h.01M16 10h.01M21 12c0 4.418-4.03 8-9 8a9.77 9.77 0 01-4-.8l-4 1 1-4A8.96 8.96 0 013 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
-                {t('message_vendor', 'Message Vendor')}
-              </button>
-              <button
-                className="mt-2 text-zinc-400 hover:text-zinc-700 text-[13px] font-poppins underline"
-                onClick={() => setShowShareOptions(false)}
-              >{t('cancel', 'Cancel')}</button>
-            </div>
-          </div>
-        )}
       </div>
-    </div>
     </>
   );
 }
